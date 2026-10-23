@@ -2,20 +2,27 @@ import streamlit as st
 import pandas as pd
 import io
 import datetime
+import random
+import string
 
 st.set_page_config(page_title="全能数据自动化工具", page_icon="🚀", layout="wide")
 
-# ================= 核心：动态防盗版密码机制 =================
-today = datetime.datetime.now().strftime("%m%d")
-daily_password = f"Excel{today}" # 比如今天是10月24日，密码就是 Excel1024
+# ================= 核心：每日动态随机8位密码 =================
+# 以今天的日期作为种子，保证每天生成的乱码固定，明天自动变
+today = datetime.datetime.now().strftime("%Y%m%d")
+random.seed(today)
+
+# 生成8位包含大小写字母和数字的密码
+characters = string.ascii_letters + string.digits
+daily_password = ''.join(random.choice(characters) for i in range(8))
 
 pwd_input = st.text_input("🔒 请输入今日专属访问密码（凭购买截图联系店主获取）", type="password")
 
-# 校验逻辑：如果输入的密码不对，并且也不是万能密码，直接掐断程序！
+# 校验逻辑：输入不对，且不是万能密码，直接拦截
 if pwd_input != daily_password and pwd_input != "master888":
     if pwd_input != "": # 如果用户输入了密码但是错的，给出警告
         st.warning("⚠️ 密码错误，或今日密码已过期。请联系店主获取最新密码。")
-    st.stop() # 核心防线：没有这行，防盗就失败了。必须保留并保持缩进！
+    st.stop() # 核心防线：拦截后面的所有内容
 # =========================================================
 
 # 以下所有代码，只有密码输入正确后，才会显示
@@ -59,6 +66,7 @@ with tab2:
         df_main = pd.read_excel(main_file)
         df_source = pd.read_excel(source_file)
         
+        # 找两张表共同存在的列名
         common_cols = list(set(df_main.columns) & set(df_source.columns))
         if common_cols:
             match_col = st.selectbox("请选择两张表中相同的列（作为匹配依据）", common_cols)
@@ -87,8 +95,11 @@ with tab3:
         
         if st.button("✨ 开始一键清洗"):
             with st.spinner("清洗中..."):
+                # 1. 去除表头两端隐藏的空格
                 df_dirty.columns = df_dirty.columns.str.strip()
+                # 2. 去除所有文本单元格前后的隐藏空格
                 df_dirty = df_dirty.map(lambda x: x.strip() if isinstance(x, str) else x)
+                # 3. 把所有完全为空的行删掉
                 df_dirty = df_dirty.dropna(how='all')
                 
                 st.success("✅ 清洗完成！已去除表头空格、文本空格及全空行。")
@@ -97,5 +108,4 @@ with tab3:
                 buffer = io.BytesIO()
                 with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
                     df_dirty.to_excel(writer, index=False)
-                # 注意这里的括号和引号已经修补完整
                 st.download_button("📥 下载干净的表", buffer.getvalue(), "清洗结果.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
