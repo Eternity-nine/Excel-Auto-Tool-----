@@ -1,8 +1,24 @@
 import streamlit as st
 import pandas as pd
 import io
+import datetime
 
 st.set_page_config(page_title="全能数据自动化工具", page_icon="🚀", layout="wide")
+
+# ================= 核心：动态防盗版密码机制 =================
+today = datetime.datetime.now().strftime("%m%d")
+daily_password = f"Excel{today}" # 比如今天是10月24日，密码就是 Excel1024
+
+pwd_input = st.text_input("🔒 请输入今日专属访问密码（凭购买截图联系店主获取）", type="password")
+
+# 校验逻辑：如果输入的密码不对，并且也不是万能密码，直接掐断程序！
+if pwd_input != daily_password and pwd_input != "master888":
+    if pwd_input != "": # 如果用户输入了密码但是错的，给出警告
+        st.warning("⚠️ 密码错误，或今日密码已过期。请联系店主获取最新密码。")
+    st.stop() # 核心防线：没有这行，防盗就失败了。必须保留并保持缩进！
+# =========================================================
+
+# 以下所有代码，只有密码输入正确后，才会显示
 st.title("🚀 全能 Excel 数据自动化处理工具")
 st.write("纯本地浏览器处理，不经过第三方服务器，绝对保护您的数据隐私！")
 
@@ -43,7 +59,6 @@ with tab2:
         df_main = pd.read_excel(main_file)
         df_source = pd.read_excel(source_file)
         
-        # 让用户自己选匹配依据的列名
         common_cols = list(set(df_main.columns) & set(df_source.columns))
         if common_cols:
             match_col = st.selectbox("请选择两张表中相同的列（作为匹配依据）", common_cols)
@@ -51,7 +66,7 @@ with tab2:
                 with st.spinner("正在匹配..."):
                     result_df = pd.merge(df_main, df_source, on=match_col, how="left")
                     st.success("✅ 匹配成功！")
-                    st.dataframe(result_df.head(10)) # 预览前10行
+                    st.dataframe(result_df.head(10)) 
                     
                     buffer = io.BytesIO()
                     with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
@@ -72,11 +87,8 @@ with tab3:
         
         if st.button("✨ 开始一键清洗"):
             with st.spinner("清洗中..."):
-                # 1. 去除表头两端隐藏的空格
                 df_dirty.columns = df_dirty.columns.str.strip()
-                # 2. 去除所有文本单元格前后的隐藏空格
                 df_dirty = df_dirty.map(lambda x: x.strip() if isinstance(x, str) else x)
-                # 3. 把所有完全为空的行删掉
                 df_dirty = df_dirty.dropna(how='all')
                 
                 st.success("✅ 清洗完成！已去除表头空格、文本空格及全空行。")
@@ -85,4 +97,5 @@ with tab3:
                 buffer = io.BytesIO()
                 with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
                     df_dirty.to_excel(writer, index=False)
+                # 注意这里的括号和引号已经修补完整
                 st.download_button("📥 下载干净的表", buffer.getvalue(), "清洗结果.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

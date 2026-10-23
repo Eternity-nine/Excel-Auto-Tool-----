@@ -17,7 +17,7 @@ try:
     df_b = pd.read_excel(file_b)
     
     # 核心动作：跨表匹配！
-    # on='姓名' 意思是：用两表都有的“姓名”列作为匹配依据
+    # on='姓名'  意思是：用两表都有的“姓名”列作为匹配依据
     # how='left' 意思是：保留主表的所有人，只有匹配不到的才留空（就像 VLOOKUP 一样）
     print("🔗 正在执行跨表匹配...")
     final_df = pd.merge(df_a, df_b, on='姓名', how='left')
